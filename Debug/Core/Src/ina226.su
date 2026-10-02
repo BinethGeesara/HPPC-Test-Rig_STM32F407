@@ -1,0 +1,2 @@
+../Core/Src/ina226.c:12:6:INA226_Init	40	static
+../Core/Src/ina226.c:32:6:INA226_Read_Bus_Voltage_Current	48	static

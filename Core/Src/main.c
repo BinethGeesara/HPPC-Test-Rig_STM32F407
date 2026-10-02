@@ -21,7 +21,7 @@
 #include "SEGGER_RTT.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "ina226.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,7 +47,8 @@ I2C_HandleTypeDef hi2c1;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
-
+float bus_voltage = 0.0f;
+float shunt_current = 0.0f;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,6 +75,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+  SCB->VTOR = FLASH_BASE;
 
   /* USER CODE END 1 */
 
@@ -101,12 +103,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
   // Start the DAC on Channel 1
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-  
-  // Set the output voltage to ~0.6V 
+  // 13 Discharge
+  // 14 Charge
   // Formula: (0.6V / 3.3V) * 4095 = ~745
-  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 1846);
-
-
+  Reset_All();
+  INA226_Init(&hi2c1);
+  SEGGER_RTT_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -116,6 +118,15 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    // Poll the sensor to read the current values
+    INA226_Read_Bus_Voltage_Current(&hi2c1, &bus_voltage, &shunt_current);
+    
+    // Print over SEGGER RTT
+    // Using integer casting to print floats reliably (Voltage and Current to 3 decimal places)
+    SEGGER_RTT_printf(0, "Bus Voltage: %d.%03d V | Current: %d.%03d A\r\n", 
+                      (int)bus_voltage, (int)(bus_voltage * 1000.0f) % 1000,
+                      (int)shunt_current, (int)(shunt_current * 1000.0f) % 1000);
+
   }
   /* USER CODE END 3 */
 }
@@ -318,7 +329,32 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void Reset_All(void) {
+    // All pins off (PB12, PB13, PB14)
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14, GPIO_PIN_RESET);
+    // DAC at 0
+    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 0);
+}
 
+void Charge_ON(void) {
+    Reset_All();
+    // Pin 14 on
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+}
+  // Formula: (0.6V / 3.3V) * 4095 = ~745
+void Discharge_20A(void) {
+    Reset_All();
+    // Pin 13 on and DAC 2418
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 2418);
+}
+
+void Discharge_5A(void) {
+    Reset_All();
+    // Pin 13 on and DAC 618
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 618);
+}
 /* USER CODE END 4 */
 
 /**

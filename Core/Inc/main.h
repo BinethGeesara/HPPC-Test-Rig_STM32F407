@@ -57,6 +57,11 @@ void Error_Handler(void);
 HAL_StatusTypeDef TIM1_PWM_SetFrequencyDuty(uint32_t frequency_hz,
                                             uint32_t duty_percent);
 
+void Reset_All(void);
+void Charge_ON(void);
+void Discharge_20A(void);
+void Discharge_5A(void);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

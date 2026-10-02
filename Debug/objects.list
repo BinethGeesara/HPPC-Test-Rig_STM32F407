@@ -4,6 +4,7 @@
 "./Core/Src/SEGGER_RTT_Syscalls_KEIL.o"
 "./Core/Src/SEGGER_RTT_Syscalls_SES.o"
 "./Core/Src/SEGGER_RTT_printf.o"
+"./Core/Src/ina226.o"
 "./Core/Src/main.o"
 "./Core/Src/stm32f4xx_hal_msp.o"
 "./Core/Src/stm32f4xx_hal_timebase_tim.o"
