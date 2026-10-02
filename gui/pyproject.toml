@@ -1,0 +1,47 @@
+[project]
+name = "stm32-hppc-monitor"
+version = "1.0.0"
+description = "STM32F407 HPPC live-monitor over SEGGER RTT"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+dependencies = [
+    "PyQt5>=5.15.9,<5.16",
+    # PyQt5-Qt5 5.15.2 is the last release that ships Windows wheels on PyPI.
+    # Later versions (5.15.3+) only have Linux/macOS wheels.
+    "PyQt5-Qt5==5.15.2",
+    "PyQt5-sip>=12.13.0",
+    "pylink-square>=1.0.0",
+    "pyqtgraph>=0.13.7",
+    "numpy>=1.24.0",
+    "psutil>=5.9.0",
+]
+
+# `uv run hppc` or `uv run python main.py` to launch the GUI.
+[project.scripts]
+hppc = "main:main"
+
+[dependency-groups]
+dev = []
+
+# ---- UV settings -------------------------------------------------------
+[tool.uv]
+# Use copy mode so uv never hard-links across drives (avoids the warning
+# on Windows when the cache lives on a different volume from the project).
+link-mode = "copy"
+
+# Constrain resolution to Windows x64 so uv doesn't accidentally resolve
+# a PyQt5-Qt5 version that has no Windows wheel.
+required-environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+]
+
+# ---- Build backend -----------------------------------------------------
+[build-system]
+requires      = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# All .py source files live at the top level of gui/.
+packages = ["."]
