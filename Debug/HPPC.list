@@ -3528,8 +3528,8 @@ void Discharge_High(void) {
  8001786:	f44f 5100 	mov.w	r1, #8192	@ 0x2000
  800178a:	4806      	ldr	r0, [pc, #24]	@ (80017a4 <Discharge_High+0x28>)
  800178c:	f000 fe62 	bl	8002454 <HAL_GPIO_WritePin>
-    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 2418);
- 8001790:	f640 1372 	movw	r3, #2418	@ 0x972
+    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 3102);
+ 8001790:	f640 431e 	movw	r3, #3102	@ 0xc1e
  8001794:	2200      	movs	r2, #0
  8001796:	2100      	movs	r1, #0
  8001798:	4803      	ldr	r0, [pc, #12]	@ (80017a8 <Discharge_High+0x2c>)

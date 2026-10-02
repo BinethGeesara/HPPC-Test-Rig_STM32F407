@@ -461,7 +461,7 @@ void Discharge_High(void) {
     Reset_All();
     // Pin 13 on and DAC 2418
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
-    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 2418);
+    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, 3102);
 }
 
 void Discharge_Low(void) {
