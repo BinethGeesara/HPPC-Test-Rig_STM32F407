@@ -1,0 +1,59 @@
+Step,Stage,Current (A),Duration (s)
+1,Discharging 1C,20.0,30
+2,Resting,0,40
+3,Charging 0.75C,-15.0,10
+4,Resting,0,5
+5,Discharging C/3,6.667,1012.5
+6,Resting 1h,0,3600
+7,Discharging 1C,20.0,30
+8,Resting,0,40
+9,Charging 0.75C,-15.0,10
+10,Resting,0,5
+11,Discharging C/3,6.667,1012.5
+12,Resting 1h,0,3600
+13,Discharging 1C,20.0,30
+14,Resting,0,40
+15,Charging 0.75C,-15.0,10
+16,Resting,0,5
+17,Discharging C/3,6.667,1012.5
+18,Resting 1h,0,3600
+19,Discharging 1C,20.0,30
+20,Resting,0,40
+21,Charging 0.75C,-15.0,10
+22,Resting,0,5
+23,Discharging C/3,6.667,1012.5
+24,Resting 1h,0,3600
+25,Discharging 1C,20.0,30
+26,Resting,0,40
+27,Charging 0.75C,-15.0,10
+28,Resting,0,5
+29,Discharging C/3,6.667,1012.5
+30,Resting 1h,0,3600
+31,Discharging 1C,20.0,30
+32,Resting,0,40
+33,Charging 0.75C,-15.0,10
+34,Resting,0,5
+35,Discharging C/3,6.667,1012.5
+36,Resting 1h,0,3600
+37,Discharging 1C,20.0,30
+38,Resting,0,40
+39,Charging 0.75C,-15.0,10
+40,Resting,0,5
+41,Discharging C/3,6.667,1012.5
+42,Resting 1h,0,3600
+43,Discharging 1C,20.0,30
+44,Resting,0,40
+45,Charging 0.75C,-15.0,10
+46,Resting,0,5
+47,Discharging C/3,6.667,1012.5
+48,Resting 1h,0,3600
+49,Discharging 1C,20.0,30
+50,Resting,0,40
+51,Charging 0.75C,-15.0,10
+52,Resting,0,5
+53,Discharging C/3,6.667,1012.5
+54,Resting 1h,0,3600
+55,Discharging 1C,20.0,30
+56,Resting,0,40
+57,Charging 0.75C,-15.0,10
+58,Resting,0,5

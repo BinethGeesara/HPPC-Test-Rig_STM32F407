@@ -175,6 +175,11 @@ class LiveChart(QFrame):
     labels:   List of channel name strings shown in the legend.
     """
 
+    # Emitted whenever the X (time) axis range changes — live scroll or user
+    # pan/zoom.  Connect two charts through this signal via MonitoringWidget
+    # to keep their time axes in sync.
+    x_range_changed = pyqtSignal(float, float)   # (x_lo, x_hi) seconds-ago
+
     def __init__(
         self,
         title:   str,
@@ -217,6 +222,10 @@ class LiveChart(QFrame):
         self._paused    = False
         self._t_ref     = None   # frozen timestamp while paused
         self._dirty     = False
+
+        # X-axis sync: prevents feedback loops when the peer chart applies
+        # our emitted x_range_changed back to us.
+        self._syncing   = False
 
         self._build(title, y_label, y_unit)
 
@@ -424,6 +433,21 @@ class LiveChart(QFrame):
             self._smoothed_series[i].append(self._ma[i].update(v))
         self._dirty = True
 
+    def apply_linked_x(self, lo: float, hi: float):
+        """Apply an X range received from the peer chart.
+
+        Sets ``_syncing = True`` so ``_set_view`` will *not* re-emit
+        ``x_range_changed``, breaking any feedback loop.  The live-follow
+        mode is disabled because the user is now controlling the window.
+        """
+        self._syncing = True
+        try:
+            self._set_live(False)
+            self._vb.setXRange(lo, hi, padding=0)
+            self._snap = self._vb.viewRange()
+        finally:
+            self._syncing = False
+
     def clear(self):
         """Erase all buffered samples and reset the moving-average state."""
         self._t.clear()
@@ -496,6 +520,11 @@ class LiveChart(QFrame):
         if y is not None:
             self._vb.setYRange(y[0], y[1], padding=0)
         self._snap = self._vb.viewRange()
+        # Notify the peer chart (e.g. voltage ↔ current) to sync its X axis.
+        # The _syncing guard breaks the feedback loop: when the peer calls
+        # apply_linked_x() it sets _syncing=True first, so we don't re-emit.
+        if x is not None and not self._syncing:
+            self.x_range_changed.emit(float(x[0]), float(x[1]))
 
     def _sync_spins(self):
         y0, y1 = self._vb.viewRange()[1]
@@ -532,16 +561,21 @@ class LiveChart(QFrame):
     # ------------------------------------------------------- user interaction
 
     def _on_manual_range(self, _mask):
-        (x0, x1), (y0, y1)   = self._vb.viewRange()
+        (x0, x1), (y0, y1)    = self._vb.viewRange()
         (sx0, sx1), (sy0, sy1) = self._snap
         x_tol = 1e-6 * max(1.0, abs(sx1 - sx0))
         y_tol = 1e-6 * max(1.0, abs(sy1 - sy0))
-        if abs(x0 - sx0) > x_tol or abs(x1 - sx1) > x_tol:
+        x_moved = abs(x0 - sx0) > x_tol or abs(x1 - sx1) > x_tol
+        if x_moved:
             self._set_live(False)
         if abs(y0 - sy0) > y_tol or abs(y1 - sy1) > y_tol:
             self._set_autoscale(False)
         self._snap = self._vb.viewRange()
         self._sync_spins()
+        # Propagate the new X window to the peer chart immediately on mouse
+        # interaction (without waiting for the next _redraw tick).
+        if x_moved and not self._syncing:
+            self.x_range_changed.emit(float(x0), float(x1))
 
     def _on_scene_clicked(self, ev):
         if ev.double() and self._vb.sceneBoundingRect().contains(ev.scenePos()):
@@ -696,6 +730,15 @@ class MonitoringWidget(QFrame):
             labels=voltage_labels,
         )
         layout.addWidget(self.voltage_chart, 1)
+
+        # ---- Sync the time (X) axis between the two charts ------------
+        # When the user pans or zooms one chart's time axis, the other
+        # follows instantly.  apply_linked_x() is loop-safe (it sets
+        # _syncing=True so x_range_changed is not re-emitted).
+        self.current_chart.x_range_changed.connect(
+            self.voltage_chart.apply_linked_x)
+        self.voltage_chart.x_range_changed.connect(
+            self.current_chart.apply_linked_x)
 
     # -------------------------------------------------------- public API
 

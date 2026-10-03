@@ -380,14 +380,18 @@ class MainWindow(QMainWindow):
         self.stm32  = STM32Controller(self.link)
 
         # ---- CSV loggers ----------------------------------------------
+        # "stage" column records the active test phase (Rest, Charge, …).
+        self._current_stage = "Rest"
         self.log_current = CSVLogger(
             LOG_DIR_CURRENT,
-            [f"ch{i}_{CURRENT_UNIT}" for i in range(len(CURRENT_CH_LABELS))],
+            [f"ch{i}_{CURRENT_UNIT}" for i in range(len(CURRENT_CH_LABELS))]
+            + ["stage"],
             "current",
         )
         self.log_voltage = CSVLogger(
             LOG_DIR_VOLTAGE,
-            [f"ch{i}_{VOLTAGE_UNIT}" for i in range(len(VOLTAGE_CH_LABELS))],
+            [f"ch{i}_{VOLTAGE_UNIT}" for i in range(len(VOLTAGE_CH_LABELS))]
+            + ["stage"],
             "voltage",
         )
         self._session_t0  = time.monotonic()
@@ -397,6 +401,10 @@ class MainWindow(QMainWindow):
         self._pending_timer = QTimer(self)
         self._pending_timer.timeout.connect(self._refresh_pending)
         self._pending_timer.start(500)
+
+        # Set when the user clicks Disconnect.  The actual link disconnect
+        # is deferred until the firmware confirms OK:RESET_ALL.
+        self._disconnect_pending = False
 
         # ---- window setup --------------------------------------------
         self.setWindowTitle(f"HPPC Monitor  ·  {TARGET_DEVICE}")
@@ -549,7 +557,17 @@ class MainWindow(QMainWindow):
 
     def _toggle_connection(self):
         if self.link.is_connected():
-            self.link.request_disconnect()
+            # Send RESET_ALL first; actual disconnect happens in
+            # _on_state_changed once the firmware replies OK:RESET_ALL.
+            self._disconnect_pending = True
+            self._conn_bar.connect_button.setEnabled(False)
+            self._console.append_note("Sending RESET_ALL before disconnect…")
+            ok = self.stm32.reset_all()
+            if not ok:
+                # Link reported not connected – just disconnect immediately.
+                self._disconnect_pending = False
+                self._conn_bar.connect_button.setEnabled(True)
+                self.link.request_disconnect()
         else:
             self.link.request_connect()
 
@@ -610,18 +628,38 @@ class MainWindow(QMainWindow):
         if state.startswith("OK:"):
             cmd = state[3:]
             self._status(f"✔  {cmd}", SUCCESS)
-            # Update HPPC tab if relevant
-            if cmd in ("START_HPPC",):
+
+            # Map each confirmed command to a stage name for CSV annotation.
+            _stage_map = {
+                "RESET_ALL":      "Rest",
+                "CHARGE":         "Charge",
+                "DISCHARGE_HIGH": "Discharge_High",
+                "DISCHARGE_LOW":  "Discharge_Low",
+                "START_HPPC":     "HPPC",
+                "STOP_HPPC":      "Rest",
+            }
+            if cmd in _stage_map:
+                self._current_stage = _stage_map[cmd]
+
+            # Update HPPC tab label.
+            if cmd == "START_HPPC":
                 self._hppc_tab.set_status("▶  HPPC running (confirmed by firmware)", SUCCESS)
             elif cmd in ("STOP_HPPC", "RESET_ALL"):
                 self._hppc_tab.set_status("■  Stopped (confirmed by firmware)", TEXT_MUTED)
+
+            # If the user clicked Disconnect, this RESET_ALL ack is the
+            # signal we were waiting for – now actually disconnect.
+            if cmd == "RESET_ALL" and self._disconnect_pending:
+                self._disconnect_pending = False
+                self._conn_bar.connect_button.setEnabled(True)
+                self.link.request_disconnect()
             return
 
-        # Live state reports
+        # Live state reports from the firmware's main loop.
         if state == "HPPC_RUNNING":
+            self._current_stage = "HPPC"
             self._hppc_tab.set_status("▶  HPPC running…", SUCCESS)
         else:
-            # Unknown state - just log it
             self._console.append_note(f"STATE: {state}")
 
     # ------------------------------------------------------------ controls
@@ -668,11 +706,17 @@ class MainWindow(QMainWindow):
 
     def _log_current(self, values: list):
         if self._csv_logging:
-            self.log_current.write(values, time.monotonic() - self._session_t0)
+            self.log_current.write(
+                list(values) + [self._current_stage],
+                time.monotonic() - self._session_t0,
+            )
 
     def _log_voltage(self, values: list):
         if self._csv_logging:
-            self.log_voltage.write(values, time.monotonic() - self._session_t0)
+            self.log_voltage.write(
+                list(values) + [self._current_stage],
+                time.monotonic() - self._session_t0,
+            )
 
     # --------------------------------------------------------------- shutdown
 
